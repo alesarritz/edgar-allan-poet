@@ -1,15 +1,36 @@
 import streamlit as st
 import torch
 from transformers import GPT2TokenizerFast, GPT2LMHeadModel
+import os
+import requests
+import zipfile
 
-# Load model and tokenizer
+
 @st.cache_resource
 def load_model():
-    model_path = "edgar_allan_poet_model"
-    tokenizer = GPT2TokenizerFast.from_pretrained(model_path)
-    model = GPT2LMHeadModel.from_pretrained(model_path)
+    model_dir = "edgar_allan_poet_model"
+    zip_path = "edgar_allan_poet_model.zip"
+    gdrive_file_id = "1I9xLU3Yefnrf4Lv0d1afSc787W_4TLWi" 
+    url = f"https://drive.google.com/uc?export=download&id={gdrive_file_id}"
+
+    # Download if not already present
+    if not os.path.exists(model_dir):
+        with st.spinner("Downloading model..."):
+            response = requests.get(url, stream=True)
+            with open(zip_path, "wb") as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+
+            with zipfile.ZipFile(zip_path, "r") as zip_ref:
+                zip_ref.extractall(model_dir)
+            os.remove(zip_path)
+
+    # Load model and tokenizer
+    tokenizer = GPT2TokenizerFast.from_pretrained(model_dir)
+    model = GPT2LMHeadModel.from_pretrained(model_dir)
     model.to("cuda" if torch.cuda.is_available() else "cpu")
     return tokenizer, model
+
 
 tokenizer, model = load_model()
 
