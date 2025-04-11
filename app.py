@@ -4,32 +4,12 @@ from transformers import GPT2TokenizerFast, GPT2LMHeadModel
 import os
 import requests
 import zipfile
+import gdown
+
 
 def download_file_from_google_drive(file_id, destination):
-    import requests
-
-    URL = "https://docs.google.com/uc?export=download"
-    session = requests.Session()
-
-    response = session.get(URL, params={"id": file_id}, stream=True)
-    
-    def get_confirm_token(response):
-        for key, value in response.cookies.items():
-            if key.startswith("download_warning"):
-                return value
-        return None
-
-    token = get_confirm_token(response)
-
-    if token:
-        params = {"id": file_id, "confirm": token}
-        response = session.get(URL, params=params, stream=True)
-
-    CHUNK_SIZE = 32768
-    with open(destination, "wb") as f:
-        for chunk in response.iter_content(CHUNK_SIZE):
-            if chunk:
-                f.write(chunk)
+    url = f"https://drive.google.com/uc?id={file_id}"
+    gdown.download(url, destination, quiet=False)
 
 
 @st.cache_resource
