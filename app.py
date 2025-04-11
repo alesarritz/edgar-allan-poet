@@ -5,22 +5,39 @@ import os
 import requests
 import zipfile
 
+def download_file_from_google_drive(file_id, destination):
+    # Download file with confirmation from Google Drive (if needed)
+    URL = "https://docs.google.com/uc?export=download"
+
+    session = requests.Session()
+    response = session.get(URL, params={"id": file_id}, stream=True)
+    
+    def get_confirm_token(response):
+        for key, value in response.cookies.items():
+            if key.startswith("download_warning"):
+                return value
+        return None
+
+    token = get_confirm_token(response)
+    if token:
+        params = {"id": file_id, "confirm": token}
+        response = session.get(URL, params=params, stream=True)
+
+    with open(destination, "wb") as f:
+        for chunk in response.iter_content(32768):
+            if chunk:
+                f.write(chunk)
+
 
 @st.cache_resource
 def load_model():
-    model_dir = "edgar_allan_poet_model"
     zip_path = "edgar_allan_poet_model.zip"
-    gdrive_file_id = "1I9xLU3Yefnrf4Lv0d1afSc787W_4TLWi" 
-    url = f"https://drive.google.com/uc?export=download&id={gdrive_file_id}"
+    model_dir = "edgar_allan_poet_model"
+    gdrive_file_id = "1I9xLU3Yefnrf4Lv0d1afSc787W_4TLWi"  # your real ID
 
-    # Download if not already present
     if not os.path.exists(model_dir):
         with st.spinner("Downloading model..."):
-            response = requests.get(url, stream=True)
-            with open(zip_path, "wb") as f:
-                for chunk in response.iter_content(chunk_size=8192):
-                    f.write(chunk)
-
+            download_file_from_google_drive(gdrive_file_id, zip_path)
             with zipfile.ZipFile(zip_path, "r") as zip_ref:
                 zip_ref.extractall(model_dir)
             os.remove(zip_path)
